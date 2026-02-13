@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, FlatList, ActivityIndicator, Platform, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, Platform, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import ProductCard from '../components/ProductCard';
@@ -16,6 +16,7 @@ const ShopScreen = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('All');
     const [purchaseMode, setPurchaseMode] = useState<Record<string, 'once' | 'sub'>>({});
+    const [refreshing, setRefreshing] = useState(false);
     const { addToCart } = useCart();
 
     useEffect(() => {
@@ -30,7 +31,13 @@ const ShopScreen = () => {
             console.error('Error fetching products:', error);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
+    };
+
+    const handleRefresh = () => {
+        setRefreshing(true);
+        fetchProducts();
     };
 
     const handleAddToCart = (product: Product, isSub: boolean) => {
@@ -103,6 +110,14 @@ const ShopScreen = () => {
                 )}
                 contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        colors={['#e11d48']} // Android
+                        tintColor="#e11d48" // iOS
+                    />
+                }
             />
         </SafeAreaView>
     );

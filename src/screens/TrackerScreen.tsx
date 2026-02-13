@@ -8,6 +8,7 @@ import {
     Modal,
     Alert,
     Platform,
+    RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
@@ -96,6 +97,7 @@ const TrackerScreen = () => {
     // ----------------------------
     const [entries, setEntries] = useState<PeriodEntry[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [showLogModal, setShowLogModal] = useState(false);
 
     const todayYMD = formatDateOnlyLocal(new Date());
@@ -150,10 +152,10 @@ const TrackerScreen = () => {
     // ----------------------------
     // Data Fetch
     // ----------------------------
-    const fetchEntries = async () => {
+    const fetchEntries = async (isRefreshing = false) => {
         if (!user?.id) return;
 
-        setLoading(true);
+        if (!isRefreshing) setLoading(true);
         try {
             const response = await axios.get(`${API_URL}/tracker`, {
                 params: { userId: user.id },
@@ -197,7 +199,13 @@ const TrackerScreen = () => {
             }
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
+    };
+
+    const handleRefresh = () => {
+        setRefreshing(true);
+        fetchEntries(true);
     };
 
     // ----------------------------
@@ -423,7 +431,18 @@ const TrackerScreen = () => {
 
     return (
         <SafeAreaView className="flex-1 bg-rose-50 pt-8">
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        colors={['#e11d48']}
+                        tintColor="#e11d48"
+                    />
+                }
+            >
                 {/* Header */}
                 <View className="px-6 mb-8 flex-row justify-between items-center">
                     <View>
@@ -462,7 +481,7 @@ const TrackerScreen = () => {
                     ].map((item, idx) => (
                         <View
                             key={idx}
-                            className="bg-white/60 p-6 rounded-[2.5rem] shadow-sm border border-white/40 mr-4 w-40 h-48 justify-between"
+                            className="bg-rose-100/30 p-6 rounded-[2.5rem] border border-rose-200/50 mr-4 w-40 h-48 justify-between"
                         >
                             <View className="items-end">
                                 <Ionicons name={item.icon as any} size={24} color="#f43f5e" style={{ opacity: 0.8 }} />
@@ -479,7 +498,7 @@ const TrackerScreen = () => {
                 </ScrollView>
 
                 {/* Calendar */}
-                <View className="mx-6 bg-white/40 rounded-[3rem] p-6 shadow-sm border border-white/50 mb-8">
+                <View className="mx-6 bg-rose-100/20 rounded-[3rem] p-6 border border-rose-200/30 mb-8">
                     <View className="flex-row items-center justify-between mb-6">
                         <View>
                             <Text className="text-2xl font-black text-rose-950">
@@ -573,7 +592,7 @@ const TrackerScreen = () => {
                         .map((entry, idx) => (
                             <View
                                 key={`${entry.startDate}-${entry.endDate ?? entry.startDate}-${idx}`}
-                                className="mb-4 bg-white/40 p-5 rounded-[2rem] border border-white/50 flex-row items-center"
+                                className="mb-4 bg-rose-100/10 p-5 rounded-[2rem] border border-rose-200/20 flex-row items-center"
                             >
                                 <View className="w-12 h-12 bg-rose-100/50 rounded-2xl items-center justify-center mr-4">
                                     <Ionicons name="water" size={20} color="#f43f5e" />

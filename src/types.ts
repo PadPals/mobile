@@ -30,6 +30,14 @@ export interface User {
     phone?: string;
     name: string;
     googleId?: string;
+    age?: number;
+    town?: string;
+    country?: string;
+    isStudent?: boolean;
+    university?: string;
+    address?: string;
+    padSize?: string;
+    preferredDeductionDate?: string;
 }
 
 export interface PeriodEntry {

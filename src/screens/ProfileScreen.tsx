@@ -4,23 +4,27 @@ import {
     Text,
     ScrollView,
     TouchableOpacity,
-    ActivityIndicator
+    ActivityIndicator,
+    RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { Subscription, Order } from '../types';
+import EditProfileModal from '../components/EditProfileModal';
 import LoginModal from '../components/LoginModal';
 import OrderTrackingModal from '../components/OrderTrackingModal';
 import CONFIG from '../config';
 
 const ProfileScreen = () => {
     const navigation = useNavigation<any>();
-    const { user, isAuthenticated, logout } = useAuth();
+    const { user, isAuthenticated, logout, updateProfile } = useAuth();
     const [showLoginModal, setShowLoginModal] = useState(false);
+    const [showEditProfileModal, setShowEditProfileModal] = useState(false);
     const [orders, setOrders] = useState<Order[]>([]);
     const [loadingOrders, setLoadingOrders] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
     const [loadingSubs, setLoadingSubs] = useState(false);
@@ -32,12 +36,27 @@ const ProfileScreen = () => {
     useFocusEffect(
         React.useCallback(() => {
             if (isAuthenticated && user?.id) {
-                fetchOrders();
-                fetchSubscriptions();
-                fetchStats();
+                refreshAllData();
             }
         }, [isAuthenticated, user?.id])
     );
+
+    const refreshAllData = async () => {
+        if (!isAuthenticated || !user?.id) return;
+
+        // We run these in parallel
+        await Promise.all([
+            fetchOrders(),
+            fetchSubscriptions(),
+            fetchStats()
+        ]);
+        setRefreshing(false);
+    };
+
+    const handleRefresh = () => {
+        setRefreshing(true);
+        refreshAllData();
+    };
 
     const fetchStats = async () => {
         try {
@@ -162,7 +181,18 @@ const ProfileScreen = () => {
     // Authenticated user view
     return (
         <SafeAreaView className="flex-1 bg-rose-50">
-            <ScrollView className="flex-1 pt-8" showsVerticalScrollIndicator={false}>
+            <ScrollView
+                className="flex-1 pt-8"
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        colors={['#e11d48']}
+                        tintColor="#e11d48"
+                    />
+                }
+            >
                 {/* Profile Card */}
                 <View className="mx-6 mb-8 bg-white/60 backdrop-blur rounded-[32px] p-8 border border-white/40">
                     {/* User Info */}
@@ -177,6 +207,9 @@ const ProfileScreen = () => {
                             <Text className="text-3xl font-black text-rose-950 tracking-tight">
                                 {user?.name || 'User'}
                             </Text>
+                            <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
+                                {user?.university || user?.town || 'Complete Profile'}
+                            </Text>
                             <View className="flex-row gap-2 mt-2">
                                 <View className="bg-rose-50 px-3 py-1 rounded-full border border-rose-100">
                                     <Text className="text-[10px] font-black text-rose-600 uppercase tracking-widest">
@@ -190,6 +223,12 @@ const ProfileScreen = () => {
                                 </View>
                             </View>
                         </View>
+                        <TouchableOpacity
+                            onPress={() => setShowEditProfileModal(true)}
+                            className="bg-white/50 p-3 rounded-full border border-white/40"
+                        >
+                            <Ionicons name="pencil" size={20} color="#f43f5e" />
+                        </TouchableOpacity>
                     </View>
 
                     {/* Stats Grid */}
@@ -198,19 +237,19 @@ const ProfileScreen = () => {
                             <Text className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">
                                 Savings
                             </Text>
-                            <Text className="text-2xl font-black text-rose-950">R {Number(stats.savings).toFixed(2)}</Text>
+                            <Text className="text-2xl font-black text-rose-950" numberOfLines={1}>R {Number(stats.savings).toFixed(2)}</Text>
                         </View>
                         <View className="flex-1 bg-white/50 rounded-2xl p-4 border border-white/40">
                             <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
                                 Orders
                             </Text>
-                            <Text className="text-2xl font-black text-rose-950">{orders.length}</Text>
+                            <Text className="text-2xl font-black text-rose-950" numberOfLines={1}>{orders.length}</Text>
                         </View>
                         <View className="flex-1 bg-white/50 rounded-2xl p-4 border border-white/40">
                             <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
                                 Next
                             </Text>
-                            <Text className="text-lg font-black text-rose-950">
+                            <Text className="text-lg font-black text-rose-950" numberOfLines={1}>
                                 {stats.nextDelivery ? new Date(stats.nextDelivery).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No Data'}
                             </Text>
                         </View>
@@ -426,6 +465,13 @@ const ProfileScreen = () => {
                 visible={showTrackingModal}
                 onClose={() => setShowTrackingModal(false)}
                 order={selectedOrder}
+            />
+
+            <EditProfileModal
+                visible={showEditProfileModal}
+                onClose={() => setShowEditProfileModal(false)}
+                user={user}
+                onUpdate={updateProfile}
             />
         </SafeAreaView>
     );
